@@ -1,0 +1,32 @@
+{
+  "name": "pi-sillytavern",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A tiny pi extension works for roleplay chat.",
+  "type": "module",
+  "keywords": [
+    "pi-package"
+  ],
+  "scripts": {
+    "check": "tsc --noEmit",
+    "start": "./run.sh"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^1.4.0",
+    "@types/node": "22.19.19",
+    "typebox": "1.3.27",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}
