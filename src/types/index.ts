@@ -21,7 +21,7 @@ export const characterCardSchema = z.object({
   first_mes: z.string(),
   data: z.object({
     alternate_greetings: z.array(z.string()),
-    character_book: characterLorebookSchema.nullable().optional(),
+    character_lorebook: characterLorebookSchema.nullable().optional(),
   })
 })
 
