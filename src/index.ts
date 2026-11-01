@@ -1,3 +1,4 @@
+import { writeFileSync } from "node:fs"
 import { readFile, readdir } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -35,7 +36,7 @@ function buildAvailableTools(): string {
 
 registerToolDefinition(
     "get_lorebook",
-    "Query the current lorebook for setting information.",
+    "Query the current lorebook for setting information. When a lorebook entry is relevant to the current conversation or you need exact setting details, call get_lorebook with its index before responding. Do not invent entry content from its catalog comment.",
 )
 
 type TavernData = {
@@ -82,7 +83,9 @@ function buildSystemPrompt(state: TavernState): string {
         builder.add(`character.lorebook.${index}`, entry.content)
     }
 
-    return builder.build()
+    const systemPrompt = builder.build()
+    writeFileSync("system-prompt-debug.txt", systemPrompt)
+    return systemPrompt
 }
 
 function readLastTavernData(
@@ -153,6 +156,53 @@ function getLorebookCatalog(card: CharacterCard) {
         content: [{ type: "text" as const, text: JSON.stringify(catalog) }],
         details: undefined,
     }
+}
+
+function createLorebookCatalogExchange(
+    card: CharacterCard,
+    model: NonNullable<ExtensionContext["model"]>,
+) {
+    const toolCallId = "initial-lorebook-catalog"
+    return [
+        {
+            role: "assistant" as const,
+            content: [
+                {
+                    type: "toolCall" as const,
+                    id: toolCallId,
+                    name: "get_lorebook",
+                    arguments: {},
+                },
+            ],
+            api: model.api,
+            provider: model.provider,
+            model: model.id,
+            usage: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                totalTokens: 0,
+                cost: {
+                    input: 0,
+                    output: 0,
+                    cacheRead: 0,
+                    cacheWrite: 0,
+                    total: 0,
+                },
+            },
+            stopReason: "toolUse" as const,
+            timestamp: Date.now(),
+        },
+        {
+            role: "toolResult" as const,
+            toolCallId,
+            toolName: "get_lorebook",
+            content: getLorebookCatalog(card).content,
+            isError: false,
+            timestamp: Date.now(),
+        },
+    ]
 }
 
 function getLorebookEntry(card: CharacterCard, index: number) {
@@ -275,6 +325,27 @@ export default function (pi: ExtensionAPI) {
     pi.on("before_agent_start", () => {
         if (!state) return
         return { systemPrompt: buildSystemPrompt(state) }
+    })
+
+    pi.on("context", (event, ctx) => {
+        if (!state || !ctx.model) return
+        if (event.messages.at(-1)?.role !== "user") return
+        if (
+            event.messages.filter((message) => message.role === "user")
+                .length !== 1
+        ) {
+            return
+        }
+        if ((state.card.data.character_book?.entries.length ?? 0) === 0) {
+            return
+        }
+
+        return {
+            messages: [
+                ...event.messages,
+                ...createLorebookCatalogExchange(state.card, ctx.model),
+            ],
+        }
     })
 
     pi.registerCommand("card", {
