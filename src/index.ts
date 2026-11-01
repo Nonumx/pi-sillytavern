@@ -5,6 +5,7 @@ import type {
     ExtensionAPI,
     ExtensionCommandContext,
     ExtensionContext,
+    SessionManager,
 } from "@earendil-works/pi-coding-agent"
 import Type from "typebox"
 import { characterCardSchema, type CharacterCard } from "./types"
@@ -79,12 +80,44 @@ function errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error)
 }
 
-async function pickCard(
-    input: string,
-    ctx: ExtensionCommandContext,
-): Promise<string | undefined> {
-    if (input !== "") return path.resolve(ctx.cwd, input)
+function appendAssistantMessage(
+    sessionManager: SessionManager,
+    text: string,
+    model: NonNullable<ExtensionContext["model"]>,
+): void {
+    sessionManager.appendMessage({
+        role: "assistant",
+        content: [{ type: "text", text }],
+        api: model.api,
+        provider: model.provider,
+        model: model.id,
+        usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 0,
+            cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 0,
+            },
+        },
+        stopReason: "stop",
+        timestamp: Date.now(),
+    })
+}
 
+type CardChoice = {
+    cardPath: string
+    card: CharacterCard
+}
+
+async function pickCard(
+    ctx: ExtensionCommandContext,
+): Promise<CardChoice | undefined> {
     const files = (await readdir(CARD_DIR).catch(() => [] as string[])).filter(
         (file) => file.endsWith(".png"),
     )
@@ -93,23 +126,45 @@ async function pickCard(
         return undefined
     }
 
-    const entries = await Promise.all(
-        files.map(async (file) => {
-            const cardPath = path.join(CARD_DIR, file)
-            let name = file
-            try {
-                name = (await loadCard(cardPath)).name
-            } catch {
-                name = file
-            }
-            return { cardPath, label: name }
-        }),
-    )
+    const entries = (
+        await Promise.all(
+            files.map(async (file): Promise<CardChoice | undefined> => {
+                const cardPath = path.join(CARD_DIR, file)
+                try {
+                    return { cardPath, card: await loadCard(cardPath) }
+                } catch {
+                    return undefined
+                }
+            }),
+        )
+    ).filter((entry): entry is CardChoice => entry !== undefined)
 
-    const labels = entries.map((entry) => entry.label)
-    const chosen = await ctx.ui.select("选择角色卡", labels)
+    if (entries.length === 0) {
+        ctx.ui.notify("未找到可用的角色卡", "error")
+        return undefined
+    }
+    if (entries.length < files.length) {
+        ctx.ui.notify(
+            `已跳过 ${files.length - entries.length} 张无法加载的角色卡`,
+            "warning",
+        )
+    }
+
+    const chosen = await ctx.ui.select(
+        "选择角色卡",
+        entries.map((entry) => entry.card.name),
+    )
     if (chosen === undefined) return undefined
-    return entries[labels.indexOf(chosen)]?.cardPath
+
+    const matches = entries.filter((entry) => entry.card.name === chosen)
+    if (matches.length > 1) {
+        ctx.ui.notify(
+            `存在多张名为《${chosen}》的角色卡，请重命名后再选择`,
+            "error",
+        )
+        return undefined
+    }
+    return matches[0]
 }
 
 export default function (pi: ExtensionAPI) {
@@ -129,47 +184,31 @@ export default function (pi: ExtensionAPI) {
 
     pi.registerCommand("card", {
         description: "选择角色卡并新建会话",
-        handler: async (args, ctx) => {
-            const cardPath = await pickCard(args.trim(), ctx)
-            if (cardPath === undefined) return
-
-            let next: CharacterCard
-            try {
-                next = await loadCard(cardPath)
-            } catch (error) {
-                ctx.ui.notify(`角色卡加载失败：${errorMessage(error)}`, "error")
+        handler: async (_args, ctx) => {
+            const selected = await pickCard(ctx)
+            if (selected === undefined) return
+            if (!ctx.model) {
+                ctx.ui.notify("当前没有可用模型，无法新建会话", "error")
                 return
             }
 
-            const hasConversation = ctx.sessionManager
-                .getBranch()
-                .some(
-                    (entry) =>
-                        entry.type === "message" &&
-                        (entry.message.role === "user" ||
-                            entry.message.role === "assistant"),
-                )
-
-            if (hasConversation) {
-                const confirmed = await ctx.ui.confirm(
-                    "切换角色卡",
-                    `将载入《${next.name}》并新建会话，当前对话会被丢弃。继续？`,
-                )
-                if (!confirmed) {
-                    ctx.ui.notify("已取消", "info")
-                    return
-                }
-            }
-
-            const name = next.name
+            const { cardPath, card } = selected
+            const data: TavernData = { card: cardPath }
+            const model = ctx.model
             const result = await ctx.newSession({
                 setup: async (sessionManager) => {
-                    sessionManager.appendCustomEntry(ENTRY_TYPE, {
-                        card: cardPath,
-                    })
+                    sessionManager.appendCustomEntry(ENTRY_TYPE, data)
+                    if (card.first_mes.trim().length > 0) {
+                        appendAssistantMessage(
+                            sessionManager,
+                            card.first_mes,
+                            model,
+                        )
+                    }
                 },
                 withSession: async (nextCtx) => {
-                    nextCtx.ui.notify(`已载入《${name}》`, "info")
+                    state = { data, card }
+                    nextCtx.ui.notify(`已载入《${card.name}》`, "info")
                 },
             })
 
@@ -330,29 +369,7 @@ export default function (pi: ExtensionAPI) {
             const result = await ctx.newSession({
                 setup: async (sessionManager) => {
                     sessionManager.appendCustomEntry(ENTRY_TYPE, data)
-                    sessionManager.appendMessage({
-                        role: "assistant",
-                        content: [{ type: "text", text: greeting }],
-                        api: model.api,
-                        provider: model.provider,
-                        model: model.id,
-                        usage: {
-                            input: 0,
-                            output: 0,
-                            cacheRead: 0,
-                            cacheWrite: 0,
-                            totalTokens: 0,
-                            cost: {
-                                input: 0,
-                                output: 0,
-                                cacheRead: 0,
-                                cacheWrite: 0,
-                                total: 0,
-                            },
-                        },
-                        stopReason: "stop",
-                        timestamp: Date.now(),
-                    })
+                    appendAssistantMessage(sessionManager, greeting, model)
                 },
                 withSession: async (nextCtx) => {
                     nextCtx.ui.notify("开局已载入", "info")
