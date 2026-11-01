@@ -80,6 +80,14 @@ function errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error)
 }
 
+function toolError(text: string) {
+    return {
+        content: [{ type: "text" as const, text }],
+        details: undefined,
+        isError: true,
+    }
+}
+
 function appendAssistantMessage(
     sessionManager: SessionManager,
     text: string,
@@ -230,13 +238,7 @@ export default function (pi: ExtensionAPI) {
         }),
         annotations: { readOnlyHint: true, openWorldHint: false },
         async execute(_toolCallId, params) {
-            if (!state) {
-                return {
-                    content: [{ type: "text" as const, text: MISSING_CARD }],
-                    details: undefined,
-                    isError: true,
-                }
-            }
+            if (!state) return toolError(MISSING_CARD)
 
             const book =
                 state.card.data.character_book ?? state.card.character_book
@@ -257,16 +259,9 @@ export default function (pi: ExtensionAPI) {
 
             const entry = lore[params.index]
             if (!entry) {
-                return {
-                    content: [
-                        {
-                            type: "text" as const,
-                            text: `索引 ${params.index} 不存在，有效范围 0-${lore.length - 1}`,
-                        },
-                    ],
-                    details: undefined,
-                    isError: true,
-                }
+                return toolError(
+                    `索引 ${params.index} 不存在，有效范围 0-${lore.length - 1}`,
+                )
             }
 
             return {
