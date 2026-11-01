@@ -217,40 +217,6 @@ export default function (pi: ExtensionAPI) {
     })
 
     pi.registerTool({
-        name: "get_character",
-        label: "角色档案",
-        description:
-            "获取当前角色卡的基础档案：name、description、personality、scenario。第一次以角色身份回复前应先调用。",
-        parameters: Type.Object({}),
-        annotations: { readOnlyHint: true, openWorldHint: false },
-        async execute() {
-            if (!state) {
-                return {
-                    content: [{ type: "text" as const, text: MISSING_CARD }],
-                    details: undefined,
-                    isError: true,
-                }
-            }
-
-            const { name, description, personality, scenario } = state.card
-            return {
-                content: [
-                    {
-                        type: "text" as const,
-                        text: [
-                            `name: ${name}`,
-                            `description: ${description}`,
-                            `personality: ${personality}`,
-                            `scenario: ${scenario}`,
-                        ].join("\n"),
-                    },
-                ],
-                details: undefined,
-            }
-        },
-    })
-
-    pi.registerTool({
         name: "get_lorebook",
         label: "世界书",
         description:
