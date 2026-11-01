@@ -4,12 +4,13 @@ import { fileURLToPath } from "node:url"
 import type {
     ExtensionAPI,
     ExtensionCommandContext,
+    ExtensionContext,
 } from "@earendil-works/pi-coding-agent"
 import Type from "typebox"
 import { characterCardSchema } from "./types"
 import { parseCharacterCardPng } from "./utils"
 
-const ENTRY_TYPE = "sillytavern"
+const ENTRY_TYPE = "pi_tavern"
 
 const DATA_DIR = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
@@ -35,6 +36,26 @@ type CardState = {
 }
 
 const MISSING_CARD = "尚未选择角色卡，请先执行 /card"
+
+type TavernData = {
+    card?: string
+}
+
+function readLastTavernData(
+    ctx: ExtensionContext,
+): TavernData | undefined {
+    const branch = ctx.sessionManager.getBranch()
+
+    for (let i = branch.length - 1; i >= 0; i -= 1) {
+        const entry = branch[i]
+        if (entry?.type !== "custom" || entry.customType !== ENTRY_TYPE) {
+            continue
+        }
+        return entry.data as TavernData | undefined
+    }
+
+    return undefined
+}
 
 function preview(text: string, maxLength = 80): string {
     const flat = text.replace(/\s+/g, " ").trim()
@@ -108,23 +129,11 @@ export default function (pi: ExtensionAPI) {
     let state: CardState | undefined
 
     pi.on("session_start", async (_event, ctx) => {
-        const branch = ctx.sessionManager.getBranch()
-
-        let cardPath: string | undefined
-        for (let i = branch.length - 1; i >= 0; i -= 1) {
-            const entry = branch[i]
-            if (entry?.type !== "custom" || entry.customType !== ENTRY_TYPE) {
-                continue
-            }
-            const data = entry.data as { card?: unknown } | undefined
-            if (typeof data?.card === "string") cardPath = data.card
-            break
-        }
-
-        if (cardPath === undefined) return
+        const data = readLastTavernData(ctx)
+        if (typeof data?.card !== "string") return
 
         try {
-            state = await loadCard(cardPath)
+            state = await loadCard(data.card)
         } catch (error) {
             state = undefined
             ctx.ui.notify(`角色卡加载失败：${errorMessage(error)}`, "error")
