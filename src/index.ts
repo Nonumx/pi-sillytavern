@@ -218,14 +218,13 @@ export default function (pi: ExtensionAPI) {
 
     pi.registerTool({
         name: "get_lorebook",
-        label: "世界书",
-        description:
-            "不带参数时返回世界书目录，每项为 { index, comment }。传入 index 返回该条完整 content。",
+        label: "Lorebook",
+        description: "Return the lorebook catalog or a lorebook entry's content.",
         parameters: Type.Object({
             index: Type.Optional(
                 Type.Integer({
                     minimum: 0,
-                    description: "世界书条目索引，省略则返回目录",
+                    description: "Lorebook entry index. Omit to return the catalog.",
                 }),
             ),
         }),
