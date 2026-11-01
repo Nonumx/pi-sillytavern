@@ -20,6 +20,23 @@ const DATA_DIR = path.resolve(
 const CARD_DIR = path.join(DATA_DIR, "character_cards")
 
 const MISSING_CARD = "尚未选择角色卡，请先执行 /card"
+const CORE_INSTRUCTIONS = `You are running in Pi Tavern, a roleplay agent.
+Your goal is to portray the active character and advance the roleplay while remaining consistent with the established setting.`
+
+const toolDefinitions: string[] = []
+
+function registerToolDefinition(name: string, description: string): void {
+    toolDefinitions.push(`- ${name}: ${description}`)
+}
+
+function buildAvailableTools(): string {
+    return ["Available tools:", ...toolDefinitions].join("\n")
+}
+
+registerToolDefinition(
+    "get_lorebook",
+    "Query the current lorebook for setting information.",
+)
 
 type TavernData = {
     card?: string
@@ -55,6 +72,8 @@ class SystemPromptBuilder {
 
 function buildSystemPrompt(state: TavernState): string {
     const builder = new SystemPromptBuilder()
+    builder.add("core", CORE_INSTRUCTIONS)
+    builder.add("core.tools", buildAvailableTools())
     builder.add("character.description", state.card.description)
     return builder.build()
 }
