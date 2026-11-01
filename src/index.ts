@@ -240,9 +240,7 @@ export default function (pi: ExtensionAPI) {
         async execute(_toolCallId, params) {
             if (!state) return toolError(MISSING_CARD)
 
-            const book =
-                state.card.data.character_book ?? state.card.character_book
-            const lore = book?.entries ?? []
+            const lore = state.card.data.character_book?.entries ?? []
 
             if (params.index === undefined) {
                 const index = lore.map((entry, i) => ({

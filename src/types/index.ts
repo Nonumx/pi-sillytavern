@@ -20,7 +20,6 @@ export const characterCardSchema = z.object({
   personality: z.string().default(""),
   scenario: z.string().default(""),
   first_mes: z.string().default(""),
-  character_book: characterLorebookSchema.nullable().optional(),
   data: z.object({
     alternate_greetings: z.array(z.string()).default([]),
     character_book: characterLorebookSchema.nullable().optional(),
