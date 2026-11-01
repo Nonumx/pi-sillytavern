@@ -7,7 +7,7 @@ import type {
     ExtensionContext,
 } from "@earendil-works/pi-coding-agent"
 import Type from "typebox"
-import { characterCardSchema } from "./types"
+import { characterCardSchema, type CharacterCard } from "./types"
 import { parseCharacterCardPng } from "./utils"
 
 const ENTRY_TYPE = "pi_tavern"
@@ -18,27 +18,15 @@ const DATA_DIR = path.resolve(
 )
 const CARD_DIR = path.join(DATA_DIR, "character_cards")
 
-type LoreEntry = {
-    comment: string
-    content: string
-}
-
-type CardState = {
-    cardPath: string
-    profile: {
-        name: string
-        description: string
-        personality: string
-        scenario: string
-    }
-    greetings: string[]
-    lore: LoreEntry[]
-}
-
 const MISSING_CARD = "尚未选择角色卡，请先执行 /card"
 
 type TavernData = {
     card?: string
+}
+
+type TavernState = {
+    data: TavernData
+    card: CharacterCard
 }
 
 function readLastTavernData(
@@ -65,27 +53,26 @@ function preview(text: string, maxLength = 80): string {
         : flat
 }
 
-async function loadCard(cardPath: string): Promise<CardState> {
+async function loadCard(cardPath: string): Promise<CharacterCard> {
     const bytes = await readFile(cardPath)
-    const card = characterCardSchema.parse(parseCharacterCardPng(bytes))
-    const book = card.data.character_book ?? card.character_book ?? null
+    return characterCardSchema.parse(parseCharacterCardPng(bytes))
+}
 
-    return {
-        cardPath,
-        profile: {
-            name: card.name,
-            description: card.description,
-            personality: card.personality,
-            scenario: card.scenario,
-        },
-        greetings: [card.first_mes, ...card.data.alternate_greetings].filter(
-            (text) => text.trim().length > 0,
-        ),
-        lore: (book?.entries ?? []).map((entry) => ({
-            comment: entry.comment,
-            content: entry.content,
-        })),
-    }
+async function loadPreset(): Promise<void> {}
+
+async function loadLorebooks(): Promise<void> {}
+
+async function loadTavernState(
+    data: TavernData,
+): Promise<TavernState | undefined> {
+    const cardPath = data.card
+    if (typeof cardPath !== "string") return undefined
+
+    const card = await loadCard(cardPath)
+    await loadPreset()
+    await loadLorebooks()
+
+    return { data, card }
 }
 
 function errorMessage(error: unknown): string {
@@ -111,7 +98,7 @@ async function pickCard(
             const cardPath = path.join(CARD_DIR, file)
             let name = file
             try {
-                name = (await loadCard(cardPath)).profile.name
+                name = (await loadCard(cardPath)).name
             } catch {
                 name = file
             }
@@ -126,14 +113,14 @@ async function pickCard(
 }
 
 export default function (pi: ExtensionAPI) {
-    let state: CardState | undefined
+    let state: TavernState | undefined
 
     pi.on("session_start", async (_event, ctx) => {
         const data = readLastTavernData(ctx)
-        if (typeof data?.card !== "string") return
+        if (data === undefined) return
 
         try {
-            state = await loadCard(data.card)
+            state = await loadTavernState(data)
         } catch (error) {
             state = undefined
             ctx.ui.notify(`角色卡加载失败：${errorMessage(error)}`, "error")
@@ -146,7 +133,7 @@ export default function (pi: ExtensionAPI) {
             const cardPath = await pickCard(args.trim(), ctx)
             if (cardPath === undefined) return
 
-            let next: CardState
+            let next: CharacterCard
             try {
                 next = await loadCard(cardPath)
             } catch (error) {
@@ -166,7 +153,7 @@ export default function (pi: ExtensionAPI) {
             if (hasConversation) {
                 const confirmed = await ctx.ui.confirm(
                     "切换角色卡",
-                    `将载入《${next.profile.name}》并新建会话，当前对话会被丢弃。继续？`,
+                    `将载入《${next.name}》并新建会话，当前对话会被丢弃。继续？`,
                 )
                 if (!confirmed) {
                     ctx.ui.notify("已取消", "info")
@@ -174,7 +161,7 @@ export default function (pi: ExtensionAPI) {
                 }
             }
 
-            const name = next.profile.name
+            const name = next.name
             const result = await ctx.newSession({
                 setup: async (sessionManager) => {
                     sessionManager.appendCustomEntry(ENTRY_TYPE, {
@@ -206,7 +193,7 @@ export default function (pi: ExtensionAPI) {
                 }
             }
 
-            const { name, description, personality, scenario } = state.profile
+            const { name, description, personality, scenario } = state.card
             return {
                 content: [
                     {
@@ -247,8 +234,12 @@ export default function (pi: ExtensionAPI) {
                 }
             }
 
+            const book =
+                state.card.data.character_book ?? state.card.character_book
+            const lore = book?.entries ?? []
+
             if (params.index === undefined) {
-                const index = state.lore.map((entry, i) => ({
+                const index = lore.map((entry, i) => ({
                     index: i,
                     comment: entry.comment,
                 }))
@@ -260,13 +251,13 @@ export default function (pi: ExtensionAPI) {
                 }
             }
 
-            const entry = state.lore[params.index]
+            const entry = lore[params.index]
             if (!entry) {
                 return {
                     content: [
                         {
                             type: "text" as const,
-                            text: `索引 ${params.index} 不存在，有效范围 0-${state.lore.length - 1}`,
+                            text: `索引 ${params.index} 不存在，有效范围 0-${lore.length - 1}`,
                         },
                     ],
                     details: undefined,
@@ -288,7 +279,11 @@ export default function (pi: ExtensionAPI) {
                 ctx.ui.notify(MISSING_CARD, "error")
                 return
             }
-            if (state.greetings.length === 0) {
+            const greetings = [
+                state.card.first_mes,
+                ...state.card.data.alternate_greetings,
+            ].filter((text) => text.trim().length > 0)
+            if (greetings.length === 0) {
                 ctx.ui.notify("角色卡没有可用的开局文本", "error")
                 return
             }
@@ -297,14 +292,14 @@ export default function (pi: ExtensionAPI) {
                 return
             }
 
-            const options = state.greetings.map(
+            const options = greetings.map(
                 (greeting, index) => `${index}  ${preview(greeting)}`,
             )
             const chosen = await ctx.ui.select("选择开局", options)
             if (chosen === undefined) return
 
             const index = Number(chosen.slice(0, chosen.indexOf("  ")))
-            const greeting = state.greetings[index]
+            const greeting = greetings[index]
             if (greeting === undefined) return
 
             const hasConversation = ctx.sessionManager
@@ -331,12 +326,10 @@ export default function (pi: ExtensionAPI) {
             }
 
             const model = ctx.model
-            const cardPath = state.cardPath
+            const data = state.data
             const result = await ctx.newSession({
                 setup: async (sessionManager) => {
-                    sessionManager.appendCustomEntry(ENTRY_TYPE, {
-                        card: cardPath,
-                    })
+                    sessionManager.appendCustomEntry(ENTRY_TYPE, data)
                     sessionManager.appendMessage({
                         role: "assistant",
                         content: [{ type: "text", text: greeting }],
