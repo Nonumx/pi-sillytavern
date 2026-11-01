@@ -5,6 +5,7 @@ export const characterBookEntrySchema = z.object({
   comment: z.string().default(""),
   content: z.string(),
   enabled: z.boolean().default(true),
+  constant: z.boolean().default(false),
   position: z.coerce.string().optional(),
   insertion_order: z.number().optional()
 })

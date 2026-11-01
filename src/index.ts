@@ -75,6 +75,13 @@ function buildSystemPrompt(state: TavernState): string {
     builder.add("core", CORE_INSTRUCTIONS)
     builder.add("core.tools", buildAvailableTools())
     builder.add("character.description", state.card.description)
+
+    const lore = state.card.data.character_book?.entries ?? []
+    for (const [index, entry] of lore.entries()) {
+        if (entry.constant !== true) continue
+        builder.add(`character.lorebook.${index}`, entry.content)
+    }
+
     return builder.build()
 }
 
