@@ -30,6 +30,35 @@ type TavernState = {
     card: CharacterCard
 }
 
+type PromptSegment = {
+    id: string
+    content: string
+}
+
+class SystemPromptBuilder {
+    private segments: PromptSegment[] = []
+
+    add(id: string, content: string): void {
+        if (this.segments.some((segment) => segment.id === id)) {
+            throw new Error(`Duplicate prompt segment: ${id}`)
+        }
+        if (content.trim().length === 0) return
+        this.segments.push({ id, content })
+    }
+
+    build(): string {
+        return this.segments
+            .map((segment) => segment.content.trim())
+            .join("\n\n")
+    }
+}
+
+function buildSystemPrompt(state: TavernState): string {
+    const builder = new SystemPromptBuilder()
+    builder.add("character.description", state.card.description)
+    return builder.build()
+}
+
 function readLastTavernData(
     ctx: ExtensionContext,
 ): TavernData | undefined {
@@ -215,6 +244,11 @@ export default function (pi: ExtensionAPI) {
             state = undefined
             ctx.ui.notify(`角色卡加载失败：${errorMessage(error)}`, "error")
         }
+    })
+
+    pi.on("before_agent_start", () => {
+        if (!state) return
+        return { systemPrompt: buildSystemPrompt(state) }
     })
 
     pi.registerCommand("card", {
