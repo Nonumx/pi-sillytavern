@@ -88,6 +88,33 @@ function toolError(text: string) {
     }
 }
 
+function getLorebookCatalog(card: CharacterCard) {
+    const lore = card.data.character_book?.entries ?? []
+    const catalog = lore.map((entry, index) => ({
+        index,
+        comment: entry.comment,
+    }))
+    return {
+        content: [{ type: "text" as const, text: JSON.stringify(catalog) }],
+        details: undefined,
+    }
+}
+
+function getLorebookEntry(card: CharacterCard, index: number) {
+    const lore = card.data.character_book?.entries ?? []
+    const entry = lore[index]
+    if (!entry) {
+        return toolError(
+            `Lorebook entry ${index} does not exist. Valid range: 0-${lore.length - 1}.`,
+        )
+    }
+
+    return {
+        content: [{ type: "text" as const, text: entry.content }],
+        details: undefined,
+    }
+}
+
 function appendAssistantMessage(
     sessionManager: SessionManager,
     text: string,
@@ -239,33 +266,10 @@ export default function (pi: ExtensionAPI) {
         annotations: { readOnlyHint: true, openWorldHint: false },
         async execute(_toolCallId, params) {
             if (!state) return toolError(MISSING_CARD)
-
-            const lore = state.card.data.character_book?.entries ?? []
-
             if (params.index === undefined) {
-                const index = lore.map((entry, i) => ({
-                    index: i,
-                    comment: entry.comment,
-                }))
-                return {
-                    content: [
-                        { type: "text" as const, text: JSON.stringify(index) },
-                    ],
-                    details: undefined,
-                }
+                return getLorebookCatalog(state.card)
             }
-
-            const entry = lore[params.index]
-            if (!entry) {
-                return toolError(
-                    `索引 ${params.index} 不存在，有效范围 0-${lore.length - 1}`,
-                )
-            }
-
-            return {
-                content: [{ type: "text" as const, text: entry.content }],
-                details: undefined,
-            }
+            return getLorebookEntry(state.card, params.index)
         },
     })
 
