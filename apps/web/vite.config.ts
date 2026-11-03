@@ -1,0 +1,28 @@
+import { fileURLToPath, URL } from 'node:url'
+
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import vueDevTools from 'vite-plugin-vue-devtools'
+import tailwindcss from "@tailwindcss/vite"
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [
+    vue(),
+    vueDevTools(),
+    tailwindcss(),
+  ],
+  server: {
+    proxy: {
+      '/api': 'http://localhost:3000',
+    },
+  },
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // 共享类型来自服务端，web 侧不另抄一份。只指向 types 目录而不是整个 src，
+      // 免得误把服务端运行时（hono / node:sqlite）拉进浏览器包。
+      '@server-types': fileURLToPath(new URL('../server/src/types', import.meta.url)),
+    },
+  },
+})
