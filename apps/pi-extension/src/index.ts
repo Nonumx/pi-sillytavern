@@ -74,16 +74,18 @@ class SystemPromptBuilder {
     }
 }
 
-function buildSystemPrompt(state: TavernState): string {
+function buildSystemPrompt(state?: TavernState): string {
     const builder = new SystemPromptBuilder()
     builder.add("core", CORE_INSTRUCTIONS)
     builder.add("core.tools", buildAvailableTools())
-    builder.add("character.description", state.card.description)
 
-    const lore = state.card.data.character_book?.entries ?? []
-    for (const [index, entry] of lore.entries()) {
-        if (entry.constant !== true) continue
-        builder.add(`character.lorebook.${index}`, entry.content)
+    if (state) {
+        builder.add("character.description", state.card.description)
+        const lore = state.card.data.character_book?.entries ?? []
+        for (const [index, entry] of lore.entries()) {
+            if (entry.constant !== true) continue
+            builder.add(`character.lorebook.${index}`, entry.content)
+        }
     }
 
     const systemPrompt = builder.build()
@@ -326,7 +328,6 @@ export default function (pi: ExtensionAPI) {
     })
 
     pi.on("before_agent_start", () => {
-        if (!state) return
         return { systemPrompt: buildSystemPrompt(state) }
     })
 
