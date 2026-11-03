@@ -22,7 +22,7 @@ const CARD_DIR = path.join(DATA_DIR, "character_cards")
 
 const MISSING_CARD = "尚未选择角色卡，请先执行 /card"
 const CORE_INSTRUCTIONS = `You are running in Pi Tavern, a roleplay agent.
-Your goal is to portray the active character and advance the roleplay while remaining consistent with the established setting.`
+Your goal is to portray all characters faithfully and advance the roleplay while remaining consistent with the established setting.`
 
 const toolDefinitions: string[] = []
 
@@ -36,7 +36,7 @@ function buildAvailableTools(): string {
 
 registerToolDefinition(
     "get_lorebook",
-    "Query the current lorebook for setting information. When a lorebook entry is relevant to the current conversation or you need exact setting details, call get_lorebook with its index before responding. Do not invent entry content from its catalog comment.",
+    "Read character definitions, setting details, and style guidance.",
 )
 
 type TavernData = {
@@ -385,7 +385,8 @@ export default function (pi: ExtensionAPI) {
     pi.registerTool({
         name: "get_lorebook",
         label: "Lorebook",
-        description: "Return the lorebook catalog or a lorebook entry's content.",
+        description:
+            "Read lorebook entries before writing. Before writing about any character, including newly introduced characters, read every entry relevant to that character; do not limit lookups to the opening character or a perceived protagonist. Before composing a scene, read all entries relevant to its setting and required writing style. Use index to read an entry, or omit it to return the catalog. Never invent entry content from catalog comments.",
         parameters: Type.Object({
             index: Type.Optional(
                 Type.Integer({
