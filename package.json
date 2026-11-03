@@ -6,8 +6,17 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "run-p dev:server dev:web",
+    "dev:server": "npm run dev --workspace @pi-sillytavern/server --",
+    "dev:web": "npm run dev --workspace @pi-sillytavern/web --",
+    "build": "npm run build --workspaces --if-present",
     "check": "npm run check --workspaces --if-present",
-    "start": "npm run start --workspace @pi-sillytavern/pi-extension --"
+    "start": "npm run start:pi --",
+    "start:pi": "npm run start --workspace @pi-sillytavern/pi-extension --",
+    "start:server": "npm run start --workspace @pi-sillytavern/server --"
+  },
+  "devDependencies": {
+    "npm-run-all2": "^9.0.3"
   },
   "engines": {
     "node": ">=22.19.0"

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import MessageScroller from '@/components/ui/message-scroller/MessageScroller.vue';
 import MessageScrollerContent from '@/components/ui/message-scroller/MessageScrollerContent.vue';
@@ -10,14 +9,10 @@ import MessageScrollerButton from '@/components/ui/message-scroller/MessageScrol
 import UserMessage from './UserMessage.vue';
 import AssistantMessage from './AssistantMessage.vue';
 import SystemMessage from './SystemMessage.vue';
+import { useChatStore } from './useChatStore';
 
 const chat = useChatStore()
 const { displayMessages } = storeToRefs(chat)
-
-onMounted(() => {
-    chat.loadPreset(TEST_PRESET_ID)
-    chat.loadCharacterCard(TEST_CHARACTER_CARD_ID)
-})
 </script>
 
 <template>

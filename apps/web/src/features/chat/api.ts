@@ -27,12 +27,14 @@ interface ChatCompletionChunk {
       reasoning_content?: string | null
     }
   }>
+  error?: string
 }
 
 function parseChunk(data: string): ChatCompletionDelta | null {
   if (!data || data === '[DONE]') return null
 
   const chunk = JSON.parse(data) as ChatCompletionChunk
+  if (chunk.error) throw new Error(chunk.error)
   const delta = chunk.choices?.[0]?.delta
   return {
     ...(typeof delta?.content === 'string' ? { content: delta.content } : {}),
