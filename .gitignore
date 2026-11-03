@@ -1,4 +1,4 @@
-/node_modules
+node_modules/
 /data
 .DS_Store
-/system-prompt-debug.txt
+system-prompt-debug.txt

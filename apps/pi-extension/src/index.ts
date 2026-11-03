@@ -15,8 +15,11 @@ import { parseCharacterCardPng } from "./utils"
 const ENTRY_TYPE = "pi_tavern"
 
 const DATA_DIR = path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    "../data",
+    process.env.TAVERN_DATA_DIR ??
+        path.resolve(
+            path.dirname(fileURLToPath(import.meta.url)),
+            "../../../data",
+        ),
 )
 const CARD_DIR = path.join(DATA_DIR, "character_cards")
 
