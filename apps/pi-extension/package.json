@@ -5,7 +5,8 @@
   "description": "A tiny pi extension works for roleplay chat.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./card": "./src/card.ts"
   },
   "keywords": [
     "pi-package"

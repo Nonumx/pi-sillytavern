@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import MarkdownIt from 'markdown-it'
+import { useCardStore } from '@/features/card/useCardStore'
 import { requestChatCompletion } from './api'
 import type { ChatMessageData, DisplayMessage } from './types'
 
@@ -34,6 +35,7 @@ export const useChatStore = defineStore('chat', () => {
     const text = content.trim()
     if (!text || isSending.value) return
 
+    const cardStore = useCardStore()
     isSending.value = true
     const userId = crypto.randomUUID()
     const assistantId = crypto.randomUUID()
@@ -48,17 +50,21 @@ export const useChatStore = defineStore('chat', () => {
     })
 
     try {
-      await requestChatCompletion(history, (delta) => {
-        const assistant = messages.value.find(
-          (message) => message.id === assistantId,
-        )
-        if (!assistant) return
-        if (delta.content) assistant.content += delta.content
-        if (delta.reasoningContent) {
-          assistant.reasoningContent =
-            (assistant.reasoningContent ?? '') + delta.reasoningContent
-        }
-      })
+      await requestChatCompletion(
+        history,
+        (delta) => {
+          const assistant = messages.value.find(
+            (message) => message.id === assistantId,
+          )
+          if (!assistant) return
+          if (delta.content) assistant.content += delta.content
+          if (delta.reasoningContent) {
+            assistant.reasoningContent =
+              (assistant.reasoningContent ?? '') + delta.reasoningContent
+          }
+        },
+        cardStore.selectedCardId,
+      )
     } catch (error) {
       messages.value = messages.value.filter(
         (message) => message.id !== userId && message.id !== assistantId,
@@ -73,5 +79,11 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  return { messages, isSending, displayMessages, sendMessage }
+  function resetConversation(opening = '') {
+    messages.value = opening.trim()
+      ? [{ id: crypto.randomUUID(), role: 'assistant', content: opening }]
+      : []
+  }
+
+  return { messages, isSending, displayMessages, sendMessage, resetConversation }
 })

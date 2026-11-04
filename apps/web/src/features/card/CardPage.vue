@@ -1,0 +1,140 @@
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { Check, RefreshCw } from '@lucide/vue'
+import Alert from '@/components/ui/alert/Alert.vue'
+import Button from '@/components/ui/button/Button.vue'
+import ScrollArea from '@/components/ui/scroll-area/ScrollArea.vue'
+import Spinner from '@/components/ui/spinner/Spinner.vue'
+import { useChatStore } from '@/features/chat/useChatStore'
+import { useCardStore } from './useCardStore'
+import type { CharacterCard } from './types'
+
+const emit = defineEmits<{
+  selected: []
+}>()
+
+const cardStore = useCardStore()
+const chatStore = useChatStore()
+const { cards, selectedCardId, isLoading, error } = storeToRefs(cardStore)
+const previewCardId = ref<string>()
+
+const previewCard = computed(() =>
+  cards.value.find((card) => card.id === previewCardId.value),
+)
+
+watch(
+  cards,
+  (items) => {
+    if (items.some((card) => card.id === previewCardId.value)) return
+    previewCardId.value =
+      items.find((card) => card.id === selectedCardId.value)?.id ?? items[0]?.id
+  },
+  { immediate: true },
+)
+
+onMounted(() => void cardStore.loadCards())
+
+function selectCard(card: CharacterCard) {
+  if (selectedCardId.value !== card.id) {
+    cardStore.selectCard(card.id)
+    chatStore.resetConversation(card.first_mes)
+  }
+  emit('selected')
+}
+</script>
+
+<template>
+  <div class="flex h-full min-h-0 flex-col">
+    <header class="border-b px-6 py-5">
+      <h2 class="text-xl font-semibold">角色卡</h2>
+      <p class="mt-1 text-sm text-muted-foreground">选择一张角色卡开始新的对话</p>
+    </header>
+
+    <div v-if="isLoading" class="flex flex-1 items-center justify-center gap-2 text-muted-foreground">
+      <Spinner class="size-5" />
+      <span class="text-sm">正在加载角色卡</span>
+    </div>
+
+    <div v-else-if="error" class="flex flex-1 items-center justify-center p-6">
+      <Alert variant="destructive" class="max-w-md">
+        <div class="flex items-center justify-between gap-4">
+          <span>{{ error }}</span>
+          <Button variant="outline" size="sm" @click="cardStore.loadCards">
+            <RefreshCw />
+            重试
+          </Button>
+        </div>
+      </Alert>
+    </div>
+
+    <div v-else-if="cards.length === 0" class="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+      暂无可用角色卡
+    </div>
+
+    <div v-else class="grid min-h-0 flex-1 md:grid-cols-[18rem_minmax(0,1fr)]">
+      <ScrollArea class="border-b md:border-r md:border-b-0">
+        <div class="flex gap-2 overflow-x-auto p-3 md:flex-col md:overflow-visible">
+          <button
+            v-for="card in cards"
+            :key="card.id"
+            type="button"
+            class="flex min-w-56 items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-accent"
+            :class="previewCardId === card.id ? 'border-primary bg-accent' : 'bg-background'"
+            @click="previewCardId = card.id"
+          >
+            <img :src="card.imageUrl" :alt="card.name" class="size-12 shrink-0 rounded-md object-cover" />
+            <span class="min-w-0 flex-1 truncate font-medium">{{ card.name }}</span>
+            <Check v-if="selectedCardId === card.id" class="size-4 shrink-0 text-primary" />
+          </button>
+        </div>
+      </ScrollArea>
+
+      <ScrollArea v-if="previewCard" class="min-h-0">
+        <article class="mx-auto max-w-3xl p-6 pr-14 md:p-8 md:pr-16">
+          <div class="flex flex-col gap-5 sm:flex-row sm:items-start">
+            <img
+              :src="previewCard.imageUrl"
+              :alt="previewCard.name"
+              class="aspect-square w-32 shrink-0 rounded-xl border object-cover shadow-sm"
+            />
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="text-2xl font-semibold">{{ previewCard.name }}</h3>
+                <span v-if="selectedCardId === previewCard.id" class="rounded-full bg-secondary px-2 py-1 text-xs">
+                  当前角色卡
+                </span>
+              </div>
+              <p class="mt-2 text-sm text-muted-foreground">
+                {{ previewCard.data.character_book?.entries.length ?? 0 }} 条世界书 ·
+                {{ previewCard.data.alternate_greetings.length }} 个备选开局
+              </p>
+              <Button class="mt-5" @click="selectCard(previewCard)">
+                {{ selectedCardId === previewCard.id ? '返回当前对话' : '使用此角色卡' }}
+              </Button>
+            </div>
+          </div>
+
+          <dl class="mt-8 space-y-6">
+            <section v-if="previewCard.description">
+              <dt class="text-sm font-semibold">角色描述</dt>
+              <dd class="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{{ previewCard.description }}</dd>
+            </section>
+            <section v-if="previewCard.personality">
+              <dt class="text-sm font-semibold">性格</dt>
+              <dd class="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{{ previewCard.personality }}</dd>
+            </section>
+            <section v-if="previewCard.scenario">
+              <dt class="text-sm font-semibold">场景</dt>
+              <dd class="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{{ previewCard.scenario }}</dd>
+            </section>
+            <section v-if="previewCard.first_mes">
+              <dt class="text-sm font-semibold">开场白</dt>
+              <dd class="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{{ previewCard.first_mes }}</dd>
+            </section>
+          </dl>
+        </article>
+      </ScrollArea>
+    </div>
+  </div>
+</template>

@@ -18,6 +18,7 @@ export interface ChatCompletionDelta {
 export type ChatTransport = (
   messages: ChatMessageData[],
   onDelta: (delta: ChatCompletionDelta) => void,
+  cardId?: string,
 ) => Promise<void>
 
 interface ChatCompletionChunk {
@@ -74,11 +75,12 @@ async function readStream(
 export const requestChatCompletion: ChatTransport = async (
   messages: ChatMessageData[],
   onDelta: (delta: ChatCompletionDelta) => void,
+  cardId?: string,
 ) => {
   const response = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, cardId }),
   })
 
   if (!response.ok) {

@@ -7,6 +7,7 @@ import {
   SessionManager,
   type AgentSession,
 } from "@earendil-works/pi-coding-agent";
+import { TAVERN_ENTRY_TYPE } from "@pi-sillytavern/pi-extension/card";
 
 export type PiChatMessage = {
   role: "system" | "user" | "assistant";
@@ -17,7 +18,10 @@ const extensionPath = createRequire(import.meta.url).resolve(
   "@pi-sillytavern/pi-extension",
 );
 
-export async function createPiChatSession(messages: PiChatMessage[]): Promise<{
+export async function createPiChatSession(
+  messages: PiChatMessage[],
+  cardPath?: string,
+): Promise<{
   session: AgentSession;
   prompt: string;
 }> {
@@ -76,6 +80,12 @@ export async function createPiChatSession(messages: PiChatMessage[]): Promise<{
       );
     }
     if (!session.model) throw new Error("Pi 未配置可用模型");
+
+    if (cardPath) {
+      session.sessionManager.appendCustomEntry(TAVERN_ENTRY_TYPE, {
+        card: cardPath,
+      });
+    }
 
     const model = session.model;
     for (const message of history.slice(0, -1)) {

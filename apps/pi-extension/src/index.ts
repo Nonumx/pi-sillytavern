@@ -1,7 +1,6 @@
 import { writeFileSync } from "node:fs"
-import { readFile, readdir } from "node:fs/promises"
+import { readdir } from "node:fs/promises"
 import path from "node:path"
-import { fileURLToPath } from "node:url"
 import type {
     ExtensionAPI,
     ExtensionCommandContext,
@@ -9,19 +8,14 @@ import type {
     SessionManager,
 } from "@earendil-works/pi-coding-agent"
 import Type from "typebox"
-import { characterCardSchema, type CharacterCard } from "./types"
-import { parseCharacterCardPng } from "./utils"
+import {
+    CARD_DIR,
+    loadCard,
+    TAVERN_ENTRY_TYPE,
+} from "./card"
+import type { CharacterCard } from "./types"
 
-const ENTRY_TYPE = "pi_tavern"
-
-const DATA_DIR = path.resolve(
-    process.env.TAVERN_DATA_DIR ??
-        path.resolve(
-            path.dirname(fileURLToPath(import.meta.url)),
-            "../../../data",
-        ),
-)
-const CARD_DIR = path.join(DATA_DIR, "character_cards")
+const ENTRY_TYPE = TAVERN_ENTRY_TYPE
 
 const MISSING_CARD = "尚未选择角色卡，请先执行 /card"
 const CORE_INSTRUCTIONS = `You are running in Pi Tavern, a roleplay agent.
@@ -115,11 +109,6 @@ function preview(text: string, maxLength = 80): string {
     return chars.length > maxLength
         ? `${chars.slice(0, maxLength).join("")}…`
         : flat
-}
-
-async function loadCard(cardPath: string): Promise<CharacterCard> {
-    const bytes = await readFile(cardPath)
-    return characterCardSchema.parse(parseCharacterCardPng(bytes))
 }
 
 async function loadPreset(): Promise<void> {}
@@ -327,7 +316,16 @@ export default function (pi: ExtensionAPI) {
         }
     })
 
-    pi.on("before_agent_start", () => {
+    pi.on("before_agent_start", async (_event, ctx) => {
+        const data = readLastTavernData(ctx)
+        if (data?.card !== state?.data.card) {
+            try {
+                state = data ? await loadTavernState(data) : undefined
+            } catch (error) {
+                state = undefined
+                ctx.ui.notify(`角色卡加载失败：${errorMessage(error)}`, "error")
+            }
+        }
         return { systemPrompt: buildSystemPrompt(state) }
     })
 

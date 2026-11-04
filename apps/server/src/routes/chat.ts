@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
+import { findCharacterCard } from "../card-store.js";
 import { createPiChatSession } from "../pi/chat-session.js";
 
 const modelMessageSchema = z.object({
@@ -11,6 +12,7 @@ const modelMessageSchema = z.object({
 const chatRequestSchema = z
   .object({
     messages: z.array(modelMessageSchema).min(1, "至少需要一条消息"),
+    cardId: z.string().optional(),
   })
   .refine(({ messages }) => messages.at(-1)?.role === "user", {
     message: "最后一条消息必须来自用户",
@@ -41,9 +43,21 @@ chat.post("/", async (c) => {
     );
   }
 
+  let cardPath: string | undefined;
+  if (parsed.data.cardId) {
+    try {
+      const record = await findCharacterCard(parsed.data.cardId);
+      if (!record) return c.json({ error: "角色卡不存在或无法加载" }, 404);
+      cardPath = record.path;
+    } catch (error) {
+      console.error("角色卡加载失败", error);
+      return c.json({ error: "角色卡加载失败" }, 500);
+    }
+  }
+
   let piChat: Awaited<ReturnType<typeof createPiChatSession>>;
   try {
-    piChat = await createPiChatSession(parsed.data.messages);
+    piChat = await createPiChatSession(parsed.data.messages, cardPath);
   } catch (error) {
     console.error("Pi 会话创建失败", error);
     return c.json({ error: "Pi 会话创建失败" }, 502);
