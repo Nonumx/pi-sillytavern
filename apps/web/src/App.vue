@@ -24,6 +24,25 @@ import PresetPage from '@/features/preset/PresetPage.vue'
 const drawerOpen = ref(false)
 const featurePageOpen = ref(false)
 const activeFeature = ref<'card' | 'preset'>('card')
+const fabVisible = ref(true)
+let lastMessageScrollTop = 0
+
+function handleMessageScroll(event: Event) {
+  const viewport = event.target
+  if (
+    !(viewport instanceof HTMLElement) ||
+    viewport.dataset.slot !== 'message-scroller-viewport'
+  ) {
+    return
+  }
+
+  const scrollTop = viewport.scrollTop
+  const delta = scrollTop - lastMessageScrollTop
+  if (Math.abs(delta) < 2) return
+
+  fabVisible.value = delta < 0 || scrollTop === 0
+  lastMessageScrollTop = scrollTop
+}
 
 function openFeature(feature: 'card' | 'preset') {
   activeFeature.value = feature
@@ -47,7 +66,10 @@ function handleCardSelected() {
 <template>
   <main class="relative flex h-dvh flex-col">
     <Button
-      class="fixed top-4 left-4 z-40 rounded-full shadow-md"
+      class="fixed top-4 left-4 z-40 rounded-full shadow-md transition-all duration-200"
+      :class="fabVisible ? 'translate-x-0 opacity-100' : 'pointer-events-none -translate-x-16 opacity-0'"
+      :aria-hidden="!fabVisible"
+      :tabindex="fabVisible ? 0 : -1"
       size="icon"
       aria-label="打开角色卡与预设"
       @click="drawerOpen = true"
@@ -55,7 +77,12 @@ function handleCardSelected() {
       <Menu class="size-5" />
     </Button>
 
-    <section aria-label="对话记录" aria-live="polite" class="mx-4 mb-2 min-h-0 flex-1">
+    <section
+      aria-label="对话记录"
+      aria-live="polite"
+      class="mx-4 mb-2 min-h-0 flex-1"
+      @scroll.capture="handleMessageScroll"
+    >
       <ChatMessageList />
     </section>
     <ChatInput />
