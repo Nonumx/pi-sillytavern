@@ -46,11 +46,6 @@ function selectCard(card: CharacterCard) {
 
 <template>
   <div class="flex h-full min-h-0 flex-col">
-    <header class="border-b px-6 py-5">
-      <h2 class="text-xl font-semibold">角色卡</h2>
-      <p class="mt-1 text-sm text-muted-foreground">选择一张角色卡开始新的对话</p>
-    </header>
-
     <div v-if="isLoading" class="flex flex-1 items-center justify-center gap-2 text-muted-foreground">
       <Spinner class="size-5" />
       <span class="text-sm">正在加载角色卡</span>
@@ -72,9 +67,9 @@ function selectCard(card: CharacterCard) {
       暂无可用角色卡
     </div>
 
-    <div v-else class="grid min-h-0 flex-1 md:grid-cols-[18rem_minmax(0,1fr)]">
-      <ScrollArea class="border-b md:border-r md:border-b-0">
-        <div class="flex gap-2 overflow-x-auto p-3 md:flex-col md:overflow-visible">
+    <div v-else class="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]">
+      <ScrollArea class="min-w-0 border-b">
+        <div class="flex gap-2 overflow-x-auto p-3">
           <button
             v-for="card in cards"
             :key="card.id"
@@ -90,9 +85,9 @@ function selectCard(card: CharacterCard) {
         </div>
       </ScrollArea>
 
-      <ScrollArea v-if="previewCard" class="min-h-0">
-        <article class="mx-auto max-w-3xl p-6 pr-14 md:p-8 md:pr-16">
-          <div class="flex flex-col gap-5 sm:flex-row sm:items-start">
+      <ScrollArea v-if="previewCard" class="min-h-0 min-w-0">
+        <article class="min-w-0 p-4">
+          <div class="flex items-start gap-4">
             <img
               :src="previewCard.imageUrl"
               :alt="previewCard.name"
@@ -100,7 +95,7 @@ function selectCard(card: CharacterCard) {
             />
             <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-2">
-                <h3 class="text-2xl font-semibold">{{ previewCard.name }}</h3>
+                <h3 class="min-w-0 break-words text-xl font-semibold">{{ previewCard.name }}</h3>
                 <span v-if="selectedCardId === previewCard.id" class="rounded-full bg-secondary px-2 py-1 text-xs">
                   当前角色卡
                 </span>
