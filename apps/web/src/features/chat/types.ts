@@ -3,6 +3,7 @@ export interface ChatMessageData {
   content: string
   role: 'user' | 'assistant' | 'system'
   reasoningContent?: string
+  promptContent?: string
   isStreaming?: boolean
 }
 

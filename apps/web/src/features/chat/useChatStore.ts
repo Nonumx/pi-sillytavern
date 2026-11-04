@@ -3,9 +3,23 @@ import { defineStore } from 'pinia'
 import MarkdownIt from 'markdown-it'
 import { useCardStore } from '@/features/card/useCardStore'
 import { requestChatCompletion } from './api'
+import { isHtmlDocumentCodeBlock, renderHtmlInIframe } from './htmlFrame'
+import { applyRegexScripts } from './regex'
 import type { ChatMessageData, DisplayMessage } from './types'
 
-const markdown = new MarkdownIt({ html: false, linkify: true, breaks: true })
+const markdown = new MarkdownIt({ html: true, linkify: true, breaks: true })
+const defaultFence = markdown.renderer.rules.fence
+
+markdown.renderer.rules.fence = (tokens, index, options, env, self) => {
+  const token = tokens[index]!
+  if (isHtmlDocumentCodeBlock(token.content)) {
+    return renderHtmlInIframe(token.content)
+  }
+  return (
+    defaultFence?.(tokens, index, options, env, self) ??
+    self.renderToken(tokens, index, options)
+  )
+}
 
 export const useChatStore = defineStore('chat', () => {
   const messages = ref<ChatMessageData[]>([])
@@ -37,6 +51,12 @@ export const useChatStore = defineStore('chat', () => {
 
     const cardStore = useCardStore()
     isSending.value = true
+    if (cardStore.selectedCardId && cardStore.cards.length === 0) {
+      await cardStore.loadCards()
+    }
+    const regexScripts =
+      cardStore.cards.find((card) => card.id === cardStore.selectedCardId)?.data
+        .extensions?.regex_scripts ?? []
     const userId = crypto.randomUUID()
     const assistantId = crypto.randomUUID()
     messages.value.push({ id: userId, role: 'user', content: text })
@@ -65,6 +85,23 @@ export const useChatStore = defineStore('chat', () => {
         },
         cardStore.selectedCardId,
       )
+
+      const assistant = messages.value.find(
+        (message) => message.id === assistantId,
+      )
+      if (assistant) {
+        const generatedContent = assistant.content
+        assistant.content = applyRegexScripts(
+          generatedContent,
+          regexScripts,
+          'markdown',
+        )
+        assistant.promptContent = applyRegexScripts(
+          generatedContent,
+          regexScripts,
+          'prompt',
+        )
+      }
     } catch (error) {
       messages.value = messages.value.filter(
         (message) => message.id !== userId && message.id !== assistantId,
@@ -80,9 +117,23 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function resetConversation(opening = '') {
-    messages.value = opening.trim()
-      ? [{ id: crypto.randomUUID(), role: 'assistant', content: opening }]
-      : []
+    if (!opening.trim()) {
+      messages.value = []
+      return
+    }
+
+    const cardStore = useCardStore()
+    const regexScripts =
+      cardStore.cards.find((card) => card.id === cardStore.selectedCardId)?.data
+        .extensions?.regex_scripts ?? []
+    messages.value = [
+      {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: applyRegexScripts(opening, regexScripts, 'markdown'),
+        promptContent: applyRegexScripts(opening, regexScripts, 'prompt'),
+      },
+    ]
   }
 
   return { messages, isSending, displayMessages, sendMessage, resetConversation }

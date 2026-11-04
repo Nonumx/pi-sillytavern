@@ -146,19 +146,19 @@ function selectCard(card: CharacterCard) {
           </div>
 
           <dl class="mt-6 flex min-h-0 flex-1 flex-col gap-6">
-            <section v-if="previewCard.description" class="shrink-0">
+            <div v-if="previewCard.description" class="shrink-0">
               <dt class="text-sm font-semibold">角色描述</dt>
               <dd class="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{{ previewCard.description }}</dd>
-            </section>
-            <section v-if="previewCard.personality" class="shrink-0">
+            </div>
+            <div v-if="previewCard.personality" class="shrink-0">
               <dt class="text-sm font-semibold">性格</dt>
               <dd class="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{{ previewCard.personality }}</dd>
-            </section>
-            <section v-if="previewCard.scenario" class="shrink-0">
+            </div>
+            <div v-if="previewCard.scenario" class="shrink-0">
               <dt class="text-sm font-semibold">场景</dt>
               <dd class="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{{ previewCard.scenario }}</dd>
-            </section>
-            <section v-if="greetings.length > 0" class="flex min-h-0 flex-1 flex-col">
+            </div>
+            <div v-if="greetings.length > 0" class="flex min-h-0 flex-1 flex-col">
               <div class="flex shrink-0 items-center justify-between gap-3">
                 <dt class="text-sm font-semibold">开场白</dt>
                 <select
@@ -175,7 +175,7 @@ function selectCard(card: CharacterCard) {
               <ScrollArea class="mt-2 min-h-0 flex-1">
                 <dd class="whitespace-pre-wrap pr-3 text-sm leading-7 text-muted-foreground">{{ activeGreeting }}</dd>
               </ScrollArea>
-            </section>
+            </div>
           </dl>
         </article>
       </section>

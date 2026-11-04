@@ -15,6 +15,20 @@ export const characterLorebookSchema = z.object({
   entries: z.array(characterBookEntrySchema)
 })
 
+export const regexScriptSemanticSchema = z.enum(["options"])
+export type RegexScriptSemantic = z.infer<typeof regexScriptSemanticSchema>
+
+export const regexScriptSchema = z.object({
+  scriptName: z.string().trim().min(1),
+  disabled: z.boolean(),
+  findRegex: z.string(),
+  replaceString: z.string().default(""),
+  markdownOnly: z.boolean(),
+  promptOnly: z.boolean(),
+})
+
+export type RegexScript = z.infer<typeof regexScriptSchema>
+
 export const characterCardSchema = z.object({
   name: z.string().trim().min(1),
   description: z.string().default(""),
@@ -24,6 +38,9 @@ export const characterCardSchema = z.object({
   data: z.object({
     alternate_greetings: z.array(z.string()).default([]),
     character_book: characterLorebookSchema.nullable().optional(),
+    extensions: z.object({
+      regex_scripts: z.array(regexScriptSchema).default([]),
+    }).optional(),
   })
 })
 
@@ -50,4 +67,7 @@ const promptEntrySchema = z.object({
 export const presetFileSchema = z.object({
   prompts: z.array(promptEntrySchema),
   prompt_order: z.array(promptOrderGroupSchema),
+  extensions: z.object({
+    regex_scripts: z.array(regexScriptSchema),
+  }),
 })

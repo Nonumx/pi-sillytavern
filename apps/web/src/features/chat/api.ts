@@ -80,7 +80,13 @@ export const requestChatCompletion: ChatTransport = async (
   const response = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, cardId }),
+    body: JSON.stringify({
+      messages: messages.map((message) => ({
+        role: message.role,
+        content: message.promptContent ?? message.content,
+      })),
+      cardId,
+    }),
   })
 
   if (!response.ok) {

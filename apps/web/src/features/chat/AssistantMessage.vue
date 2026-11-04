@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useEventListener } from "@vueuse/core"
+import { HTML_FRAME_HEIGHT_MESSAGE } from './htmlFrame'
 import ThinkingBlock from './ThinkingBlock.vue'
 
 defineProps<{
@@ -12,7 +13,7 @@ defineProps<{
 const root = ref<HTMLElement | null>(null)
 
 function updateFrameHeight(event: MessageEvent<{ type?: string; height?: number }>) {
-    if (event.data?.type !== 'simple-tavern-html-height' || typeof event.data.height !== 'number') return
+    if (event.data?.type !== HTML_FRAME_HEIGHT_MESSAGE || typeof event.data.height !== 'number') return
 
     const frame = Array.from(root.value?.querySelectorAll<HTMLIFrameElement>('.message-html-frame') ?? [])
         .find((candidate) => candidate.contentWindow === event.source)
