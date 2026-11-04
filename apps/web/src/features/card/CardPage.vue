@@ -16,11 +16,38 @@ const emit = defineEmits<{
 
 const cardStore = useCardStore()
 const chatStore = useChatStore()
-const { cards, selectedCardId, isLoading, error } = storeToRefs(cardStore)
+const {
+  cards,
+  selectedCardId,
+  selectedGreetingIndex: appliedGreetingIndex,
+  isLoading,
+  error,
+} = storeToRefs(cardStore)
 const previewCardId = ref<string>()
+const previewGreetingIndex = ref(0)
 
 const previewCard = computed(() =>
   cards.value.find((card) => card.id === previewCardId.value),
+)
+const greetings = computed(() => {
+  const card = previewCard.value
+  if (!card) return []
+  return [card.first_mes, ...card.data.alternate_greetings].filter(
+    (text) => text.trim().length > 0,
+  )
+})
+const activeGreetingIndex = computed(() =>
+  greetings.value[previewGreetingIndex.value] === undefined
+    ? 0
+    : previewGreetingIndex.value,
+)
+const activeGreeting = computed(
+  () => greetings.value[activeGreetingIndex.value] ?? '',
+)
+const isCurrentGreeting = computed(
+  () =>
+    selectedCardId.value === previewCardId.value &&
+    appliedGreetingIndex.value === activeGreetingIndex.value,
 )
 
 watch(
@@ -32,13 +59,21 @@ watch(
   },
   { immediate: true },
 )
+watch(
+  previewCardId,
+  (id) => {
+    previewGreetingIndex.value =
+      id === selectedCardId.value ? appliedGreetingIndex.value : 0
+  },
+  { immediate: true },
+)
 
 onMounted(() => void cardStore.loadCards())
 
 function selectCard(card: CharacterCard) {
-  if (selectedCardId.value !== card.id) {
-    cardStore.selectCard(card.id)
-    chatStore.resetConversation(card.first_mes)
+  if (!isCurrentGreeting.value) {
+    cardStore.selectCard(card.id, activeGreetingIndex.value)
+    chatStore.resetConversation(activeGreeting.value)
   }
   emit('selected')
 }
@@ -106,7 +141,7 @@ function selectCard(card: CharacterCard) {
               </div>
             </div>
             <Button class="mt-4" @click="selectCard(previewCard)">
-              {{ selectedCardId === previewCard.id ? '返回当前对话' : '使用此角色卡' }}
+              {{ isCurrentGreeting ? '返回当前对话' : selectedCardId === previewCard.id ? '使用此开局' : '使用此角色卡' }}
             </Button>
           </div>
 
@@ -123,10 +158,22 @@ function selectCard(card: CharacterCard) {
               <dt class="text-sm font-semibold">场景</dt>
               <dd class="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{{ previewCard.scenario }}</dd>
             </section>
-            <section v-if="previewCard.first_mes" class="flex min-h-0 flex-1 flex-col">
-              <dt class="shrink-0 text-sm font-semibold">开场白</dt>
+            <section v-if="greetings.length > 0" class="flex min-h-0 flex-1 flex-col">
+              <div class="flex shrink-0 items-center justify-between gap-3">
+                <dt class="text-sm font-semibold">开场白</dt>
+                <select
+                  v-if="greetings.length > 1"
+                  v-model.number="previewGreetingIndex"
+                  aria-label="选择开场白"
+                  class="h-8 max-w-36 rounded-md border bg-background px-2 text-xs shadow-xs"
+                >
+                  <option v-for="(_, index) in greetings" :key="index" :value="index">
+                    {{ index === 0 ? '默认开局' : `备选开局 ${index}` }}
+                  </option>
+                </select>
+              </div>
               <ScrollArea class="mt-2 min-h-0 flex-1">
-                <dd class="whitespace-pre-wrap pr-3 text-sm leading-7 text-muted-foreground">{{ previewCard.first_mes }}</dd>
+                <dd class="whitespace-pre-wrap pr-3 text-sm leading-7 text-muted-foreground">{{ activeGreeting }}</dd>
               </ScrollArea>
             </section>
           </dl>
