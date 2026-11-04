@@ -5,7 +5,7 @@ import { useCardStore } from '@/features/card/useCardStore'
 import { requestChatCompletion } from './api'
 import type { ChatMessageData, DisplayMessage } from './types'
 
-const markdown = new MarkdownIt({ html: false, linkify: true })
+const markdown = new MarkdownIt({ html: false, linkify: true, breaks: true })
 
 export const useChatStore = defineStore('chat', () => {
   const messages = ref<ChatMessageData[]>([])
