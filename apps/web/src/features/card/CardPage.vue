@@ -67,14 +67,14 @@ function selectCard(card: CharacterCard) {
       暂无可用角色卡
     </div>
 
-    <div v-else class="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]">
-      <ScrollArea class="min-w-0 border-b">
-        <div class="flex gap-2 overflow-x-auto p-3">
+    <div v-else class="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[16rem_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)]">
+      <ScrollArea class="min-w-0 border-b md:border-r md:border-b-0">
+        <div class="flex gap-2 overflow-x-auto p-3 md:flex-col md:overflow-visible">
           <button
             v-for="card in cards"
             :key="card.id"
             type="button"
-            class="flex min-w-56 items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-accent"
+            class="flex min-w-56 items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-accent md:w-full md:min-w-0"
             :class="previewCardId === card.id ? 'border-primary bg-accent' : 'bg-background'"
             @click="previewCardId = card.id"
           >
@@ -85,51 +85,53 @@ function selectCard(card: CharacterCard) {
         </div>
       </ScrollArea>
 
-      <ScrollArea v-if="previewCard" class="min-h-0 min-w-0">
-        <article class="min-w-0 p-4">
-          <div class="flex items-start gap-4">
-            <img
-              :src="previewCard.imageUrl"
-              :alt="previewCard.name"
-              class="aspect-square w-32 shrink-0 rounded-xl border object-cover shadow-sm"
-            />
-            <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-2">
-                <h3 class="min-w-0 break-words text-xl font-semibold">{{ previewCard.name }}</h3>
-                <span v-if="selectedCardId === previewCard.id" class="rounded-full bg-secondary px-2 py-1 text-xs">
+      <section v-if="previewCard" class="min-h-0 min-w-0">
+        <article class="flex h-full min-h-0 min-w-0 flex-col p-4 md:p-6">
+          <div class="shrink-0">
+            <div class="flex items-center gap-4">
+              <img
+                :src="previewCard.imageUrl"
+                :alt="previewCard.name"
+                class="aspect-square w-1/3 max-w-32 shrink-0 rounded-xl border object-cover shadow-sm"
+              />
+              <div class="min-w-0 flex-1">
+                <h3 class="line-clamp-2 min-w-0 break-words text-xl font-semibold">{{ previewCard.name }}</h3>
+                <p class="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                  {{ previewCard.data.character_book?.entries.length ?? 0 }} 条世界书 ·
+                  {{ previewCard.data.alternate_greetings.length }} 个备选开局
+                </p>
+                <span v-if="selectedCardId === previewCard.id" class="mt-2 inline-block rounded-full bg-secondary px-2 py-1 text-xs">
                   当前角色卡
                 </span>
               </div>
-              <p class="mt-2 text-sm text-muted-foreground">
-                {{ previewCard.data.character_book?.entries.length ?? 0 }} 条世界书 ·
-                {{ previewCard.data.alternate_greetings.length }} 个备选开局
-              </p>
-              <Button class="mt-5" @click="selectCard(previewCard)">
-                {{ selectedCardId === previewCard.id ? '返回当前对话' : '使用此角色卡' }}
-              </Button>
             </div>
+            <Button class="mt-4" @click="selectCard(previewCard)">
+              {{ selectedCardId === previewCard.id ? '返回当前对话' : '使用此角色卡' }}
+            </Button>
           </div>
 
-          <dl class="mt-8 space-y-6">
-            <section v-if="previewCard.description">
+          <dl class="mt-6 flex min-h-0 flex-1 flex-col gap-6">
+            <section v-if="previewCard.description" class="shrink-0">
               <dt class="text-sm font-semibold">角色描述</dt>
               <dd class="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{{ previewCard.description }}</dd>
             </section>
-            <section v-if="previewCard.personality">
+            <section v-if="previewCard.personality" class="shrink-0">
               <dt class="text-sm font-semibold">性格</dt>
               <dd class="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{{ previewCard.personality }}</dd>
             </section>
-            <section v-if="previewCard.scenario">
+            <section v-if="previewCard.scenario" class="shrink-0">
               <dt class="text-sm font-semibold">场景</dt>
               <dd class="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{{ previewCard.scenario }}</dd>
             </section>
-            <section v-if="previewCard.first_mes">
-              <dt class="text-sm font-semibold">开场白</dt>
-              <dd class="mt-2 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{{ previewCard.first_mes }}</dd>
+            <section v-if="previewCard.first_mes" class="flex min-h-0 flex-1 flex-col">
+              <dt class="shrink-0 text-sm font-semibold">开场白</dt>
+              <ScrollArea class="mt-2 min-h-0 flex-1">
+                <dd class="whitespace-pre-wrap pr-3 text-sm leading-7 text-muted-foreground">{{ previewCard.first_mes }}</dd>
+              </ScrollArea>
             </section>
           </dl>
         </article>
-      </ScrollArea>
+      </section>
     </div>
   </div>
 </template>
