@@ -46,6 +46,7 @@ const activeGreeting = computed(
 )
 const isCurrentGreeting = computed(
   () =>
+    chatStore.messages.length > 0 &&
     selectedCardId.value === previewCardId.value &&
     appliedGreetingIndex.value === activeGreetingIndex.value,
 )
