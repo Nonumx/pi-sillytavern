@@ -13,6 +13,7 @@ import {
     loadCard,
     TAVERN_ENTRY_TYPE,
 } from "./card"
+import { registerSetStateTool } from "./set-state"
 import type { CharacterCard } from "./types"
 
 const ENTRY_TYPE = TAVERN_ENTRY_TYPE
@@ -34,6 +35,10 @@ function buildAvailableTools(): string {
 registerToolDefinition(
     "get_lorebook",
     "Read character definitions, setting details, and style guidance.",
+)
+registerToolDefinition(
+    "set_state",
+    "During an mvu_update turn, record state changes from the finished mvu_plot.",
 )
 
 type TavernData = {
@@ -383,6 +388,8 @@ export default function (pi: ExtensionAPI) {
             if (result.cancelled) ctx.ui.notify("新建会话已取消", "info")
         },
     })
+
+    registerSetStateTool(pi)
 
     pi.registerTool({
         name: "get_lorebook",
